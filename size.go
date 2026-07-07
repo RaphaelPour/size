@@ -5,40 +5,50 @@ type Size uint64
 const (
 	Byte Size = 1
 	B         = Byte
+)
 
-	// base-2
-	Kibibyte = Byte * 1024
-	Kib      = Kibibyte
-	Mebibyte = Kibibyte * 1024
-	Mib      = Mebibyte
-	Gibibyte = Mebibyte * 1024
-	Gib      = Gibibyte
-	Tebibyte = Gibibyte * 1024
-	Tib      = Tebibyte
-	Pebibyte = Tebibyte * 1024
-	Pib      = Pebibyte
+// base-2
+const (
+	Bytes Size = 1 << (10 * iota)
+	Kibibyte
+	Mebibyte
+	Gibibyte
+	Tebibyte
+	Pebibyte
+	Exbibyte
+
+	Kib = Kibibyte
+	Mib = Mebibyte
+	Gib = Gibibyte
+	Tib = Tebibyte
+	Pib = Pebibyte
 
 	// Exibytes are only supported til 2^64
-	Exbibyte = Pebibyte * 1024
-	Eib      = Exbibyte
+	Eib = Exbibyte
 
-	// zebibyte is 2^70 and larger as uint64 2^64
+	// zebibyte and higher is not supported,
+	// zebibite is 2^70 and larger as uint64 2^64
+)
 
-	// base-10
-	Kilobyte = Byte * 1000
-	Kb       = Kilobyte
-	Megabyte = Kilobyte * 1000
-	Mb       = Megabyte
-	Gigabyte = Megabyte * 1000
-	Gb       = Gigabyte
-	Terabyte = Gigabyte * 1000
-	Tb       = Terabyte
-	Petabyte = Terabyte * 1000
-	Pb       = Petabyte
+// base-10
+const (
+	Kilobyte Size = 1000
+	Megabyte Size = Kilobyte * 1000
+	Gigabyte Size = Megabyte * 1000
+	Terabyte Size = Gigabyte * 1000
+	Petabyte Size = Terabyte * 1000
+	Exabyte  Size = Petabyte * 1000
 
-	// base-10 Exabyte fits entirely into uint64 as it only needs ~2*60
-	Exabyte = Petabyte * 1000
-	Eb      = Exabyte
+	Kb = Kilobyte
+	Mb = Megabyte
+	Gb = Gigabyte
+	Tb = Terabyte
+	Pb = Petabyte
+
+	// Exabyte is limited by uint64
+	Eb = Exabyte
+
+	// zebibyte and above are not supported limited by uint64
 )
 
 // Bytes returns the byte size as uint64.
