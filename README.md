@@ -1,6 +1,6 @@
 # size
 
-Like `time.Duration` but for base-2 bytesizes like `1*Kb`. Conversion to bytes only.
+Like `time.Duration` but for bytesizes like `1*Kb` or `16*Gigabyte`. Supports base-2 and base-10 sizes. Conversion to bytes only.
 
 ```go
 chunkSize = 16 * size.Kib
@@ -11,8 +11,8 @@ fmt.Printf("chunk size: %d\n", chunkSize.Bytes()) // chunk size: 16384
 All other sizes:
 ```go
 sectorSize = 64 * size.Byte
-blockSize = 4 * size.Mib
-partitionSize = 120 * size.Gib
+blockSize = 4 * size.Megabyte
+partitionSize = 120 * size.Gb
 maxUsage = 2 * size.Tib
 trafficVolume = 3 * size.Pib
 arcticArchiveMaxSize = 5 * size.Eib
