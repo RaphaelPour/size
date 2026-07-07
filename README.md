@@ -1,5 +1,8 @@
 # size
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/raphaelpour/size)](https://pkg.go.dev/github.com/raphaelpour/size)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Like `time.Duration` but for bytesizes like `1*Kb` or `16*Gigabyte`. Supports base-2 and base-10 sizes. Conversion to bytes only.
 
 ```go
