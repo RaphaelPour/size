@@ -1,4 +1,4 @@
-module github.com/raphael.pour/size
+module github.com/raphaelpour/size
 
 go 1.26.4
 
