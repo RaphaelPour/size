@@ -41,6 +41,7 @@ const (
 	Eb      = Exabyte
 )
 
+// Bytes returns the byte size as uint64.
 func (s Size) Bytes() uint64 {
 	return uint64(s)
 }
