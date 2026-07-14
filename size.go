@@ -16,6 +16,11 @@
 //	fmt.Println(s.Bytes()) // 5242880
 package size
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Size represents a quantity of bytes. The zero value represents zero bytes.
 type Size uint64
 
@@ -64,7 +69,49 @@ const (
 	// zebibyte and above are not supported limited by uint64
 )
 
+type unit struct {
+	base   Size
+	suffix string
+}
+
+var (
+	byteUnit = unit{base: B, suffix: "B"}
+
+	units = []unit{
+		{base: Eib, suffix: "Eib"},
+		{base: Pib, suffix: "Pib"},
+		{base: Tib, suffix: "Tib"},
+		{base: Gib, suffix: "Gib"},
+		{base: Mib, suffix: "Mib"},
+		{base: Kib, suffix: "Kib"},
+		byteUnit,
+	}
+)
+
 // Bytes returns the byte size as uint64.
 func (s Size) Bytes() uint64 {
 	return uint64(s)
+}
+
+func (s Size) String() string {
+	// discover unit, default to byte
+	u := byteUnit
+	for _, uc := range units {
+		if s >= u.base {
+			u = uc
+			break
+		}
+	}
+
+	// convert size to string
+	valueStr := fmt.Sprintf("%.2f", float64(s)/float64(u.base))
+
+	// Trims: convert 42.00 to 42.
+	valueStr = strings.TrimRight(valueStr, "0")
+
+	// Trims: convert 42. to 42
+	valueStr = strings.TrimRight(valueStr, ".")
+
+	// append size suffix
+	return valueStr + u.suffix
 }
