@@ -85,6 +85,8 @@ const (
 	// the underlying uint64.
 )
 
+// The not exported unit contains the actual unit information and
+// is guarded by Unit
 type unit struct {
 	base   Size
 	suffix string
@@ -361,7 +363,7 @@ func Parse(text string) (Size, error) {
 	trimmed := strings.TrimSpace(text)
 	raw := strings.ToLower(trimmed)
 
-	// longest suffix matching so MB wins over B
+	// Longest suffix matching case-insensitive so MB wins over B
 	var match unit
 	found := false
 	for _, u := range units {
@@ -386,6 +388,7 @@ func Parse(text string) (Size, error) {
 		}
 	}
 
+	// Isolate the actual number from the suffix, so we can parse it in the next step.
 	num := strings.TrimSpace(strings.TrimSuffix(raw, strings.ToLower(match.suffix)))
 
 	// assume bytes first to avoid losing precision due to float64
