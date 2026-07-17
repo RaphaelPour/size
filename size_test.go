@@ -54,6 +54,12 @@ func TestSize_Format(t *testing.T) {
 	require.Equal(t, sz.String(), sz.Format(size.UnitMiB, size.WithCutEmptyFraction()))
 }
 
+func TestSize_FormatWithSpace(t *testing.T) {
+	sz := 5 * size.MiB
+	require.Equal(t, "5 MiB", sz.Format(size.UnitMiB, size.WithCutEmptyFraction(), size.WithSpace()))
+	require.Equal(t, "5.00 MiB", sz.FormatIEC(size.WithSpace()))
+}
+
 func TestSize_TextRoundTrip(t *testing.T) {
 	for _, testCase := range []struct {
 		name  string
@@ -99,7 +105,10 @@ func TestParse(t *testing.T) {
 		{name: "kB suffix", input: "5kB", expected: 5 * size.KB},
 		{name: "KiB suffix", input: "5KiB", expected: 5 * size.KiB},
 		{name: "MiB suffix", input: "5MiB", expected: 5 * size.MiB},
-		{name: "uppercase KB is kilobyte", input: "5KB", expected: 5 * size.KB},
+		{name: "lowercase kb is SI kilobyte", input: "5kb", expected: 5 * size.KB},
+		{name: "uppercase KB is JEDEC kibibyte", input: "5KB", expected: 5 * size.KiB},
+		{name: "mixed Kb is JEDEC kibibyte", input: "5Kb", expected: 5 * size.KiB},
+		{name: "leading space then KB", input: "  5 KB", expected: 5 * size.KiB},
 		{name: "lowercase gb", input: "5gb", expected: 5 * size.GB},
 		{name: "uppercase mib", input: "5MIB", expected: 5 * size.MiB},
 		{name: "lowercase byte", input: "5b", expected: 5 * size.B},
@@ -107,6 +116,10 @@ func TestParse(t *testing.T) {
 		{name: "fractional", input: "0.04TiB", expected: size.Size(frac * float64(size.TiB))},
 		{name: "missing suffix", input: "5", wantErr: true},
 		{name: "non-numeric value", input: "abcMiB", wantErr: true},
+		{name: "negative value", input: "-5MiB", wantErr: true},
+		{name: "infinite value", input: "infMiB", wantErr: true},
+		{name: "nan value", input: "nanMiB", wantErr: true},
+		{name: "with space", input: "5 MiB", expected: 5 * size.MiB},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Repeat to catch any residual map-iteration nondeterminism.
