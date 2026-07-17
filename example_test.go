@@ -15,14 +15,45 @@ func ExampleSize_Bytes() {
 }
 
 func ExampleSize_String() {
-	fmt.Println(42 * size.Gib)
-	fmt.Println(42 * size.Gb)
-	fmt.Println(1024 * size.Kib)
-	fmt.Println(1024 * size.Kb)
+	fmt.Println(42 * size.GiB)
+	fmt.Println(42 * size.GB)
+	fmt.Println(1024 * size.KiB)
+	fmt.Println(1024 * size.KB)
 
 	// Output:
-	// 42Gib
-	// 39.12Gib
-	// 1Mib
-	// 1000Kib
+	// 42GiB
+	// 39.12GiB
+	// 1MiB
+	// 1000KiB
+}
+
+func ExampleSize_Format() {
+	s := 42 * size.GiB
+	fmt.Println(s.Format(size.UnitTiB))
+	fmt.Println(s.Format(size.UnitGiB, size.WithCutEmptyFraction()))
+	fmt.Println(s.Format(size.UnitMiB, size.WithCutEmptyFraction()))
+	fmt.Println(s.Format(size.UnitKiB))
+	fmt.Println(s.Format(size.UnitByte))
+
+	// Output:
+	// 0.04TiB
+	// 42GiB
+	// 43008MiB
+	// 44040192.00KiB
+	// 45097156608.00B
+}
+
+func ExampleSize_MarshalText() {
+	s := 5 * size.MiB
+
+	text, _ := s.MarshalText()
+	fmt.Println(string(text))
+
+	var back size.Size
+	_ = back.UnmarshalText(text)
+	fmt.Println(back == s)
+
+	// Output:
+	// 5242880B
+	// true
 }
