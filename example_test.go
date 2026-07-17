@@ -43,6 +43,26 @@ func ExampleSize_Format() {
 	// 45097156608.00B
 }
 
+func ExampleSize_FormatIEC() {
+	s := 42 * size.GiB
+	fmt.Println(s.FormatIEC())
+	fmt.Println(s.FormatIEC(size.WithCutEmptyFraction()))
+
+	// Output:
+	// 42.00GiB
+	// 42GiB
+}
+
+func ExampleSize_FormatSI() {
+	s := 42 * size.GiB
+	fmt.Println(s.FormatSI())
+	fmt.Println(s.FormatSI(size.WithPrecision(4)))
+
+	// Output:
+	// 45.10GB
+	// 45.0972GB
+}
+
 func ExampleSize_MarshalText() {
 	s := 5 * size.MiB
 
