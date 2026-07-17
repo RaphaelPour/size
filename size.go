@@ -15,6 +15,12 @@
 // a size as text, Parse to read one back, and MarshalText/UnmarshalText for text
 // (un)marshaling.
 //
+// Size also implements flag.Value (via Set) for use as a command-line flag and
+// slog.LogValuer (via LogValue) for structured logging. Because it implements
+// encoding.TextMarshaler and encoding.TextUnmarshaler, it round-trips through
+// encoding/json and other text-based codecs (as the string form, e.g.
+// "5242880B") with no additional code.
+//
 // Basic usage:
 //
 //	s := 5 * size.Mebibyte
@@ -24,6 +30,7 @@ package size
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -409,4 +416,21 @@ func (s *Size) UnmarshalText(text []byte) error {
 	}
 	*s = v
 	return nil
+}
+
+// Set implements flag.Value, parsing a size string such as "5MiB" so a Size can
+// be used directly as a command-line flag. See Parse for the accepted syntax.
+func (s *Size) Set(text string) error {
+	v, err := Parse(text)
+	if err != nil {
+		return err
+	}
+	*s = v
+	return nil
+}
+
+// LogValue implements slog.LogValuer, rendering the size via String so it
+// appears as a human-readable string (for example "42GiB") in structured logs.
+func (s Size) LogValue() slog.Value {
+	return slog.StringValue(s.String())
 }

@@ -1,9 +1,17 @@
 package size_test
 
 import (
+	"flag"
 	"fmt"
+	"log/slog"
 
 	"github.com/raphaelpour/size"
+)
+
+// Compile-time checks that Size satisfies the intended interfaces.
+var (
+	_ flag.Value     = (*size.Size)(nil)
+	_ slog.LogValuer = size.Size(0)
 )
 
 func ExampleSize_Bytes() {
@@ -77,6 +85,28 @@ func ExampleParse() {
 	// Output:
 	// 5242880
 	// 1000 1024
+}
+
+func ExampleSize_Set() {
+	var s size.Size
+
+	fs := flag.NewFlagSet("example", flag.ContinueOnError)
+	fs.Var(&s, "cache", "cache size")
+	_ = fs.Parse([]string{"-cache", "5MiB"})
+
+	fmt.Println(s.Bytes())
+
+	// Output:
+	// 5242880
+}
+
+func ExampleSize_LogValue() {
+	s := 42 * size.GiB
+
+	fmt.Println(s.LogValue())
+
+	// Output:
+	// 42GiB
 }
 
 func ExampleSize_MarshalText() {
