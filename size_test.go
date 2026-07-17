@@ -176,17 +176,14 @@ func TestSize_UnmarshalText(t *testing.T) {
 		{name: "non-numeric value", input: "abcMiB", wantErr: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			// Repeat to catch any residual map-iteration nondeterminism.
-			for range 50 {
-				var got size.Size
-				err := got.UnmarshalText([]byte(testCase.input))
-				if testCase.wantErr {
-					require.Error(t, err)
-					continue
-				}
-				require.NoError(t, err)
-				require.Equal(t, testCase.expected, got)
+			var got size.Size
+			err := got.UnmarshalText([]byte(testCase.input))
+			if testCase.wantErr {
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
+			require.Equal(t, testCase.expected, got)
 		})
 	}
 }

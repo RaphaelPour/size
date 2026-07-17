@@ -103,7 +103,7 @@ func (u Unit) String() string {
 
 func (u Unit) internalUnit() unit {
 	unt := unitByte
-	if found, ok := units[u]; ok {
+	if found, ok := unitMap[u]; ok {
 		unt = found
 	}
 	return unt
@@ -165,7 +165,7 @@ var (
 		unitByte,
 	}
 
-	units = map[Unit]unit{
+	unitMap = map[Unit]unit{
 		UnitEiB:  unitEiB,
 		UnitPiB:  unitPiB,
 		UnitTiB:  unitTiB,
@@ -180,6 +180,23 @@ var (
 		UnitGB: unitGB,
 		UnitMB: unitMB,
 		UnitKB: unitKB,
+	}
+
+	units = []unit{
+		unitEiB,
+		unitPiB,
+		unitTiB,
+		unitGiB,
+		unitMiB,
+		unitKiB,
+		unitByte,
+
+		unitEB,
+		unitPB,
+		unitTB,
+		unitGB,
+		unitMB,
+		unitKB,
 	}
 )
 
