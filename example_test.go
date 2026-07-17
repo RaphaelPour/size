@@ -63,6 +63,20 @@ func ExampleSize_FormatSI() {
 	// 45.0972GB
 }
 
+func ExampleParse() {
+	s, _ := size.Parse("5MiB")
+	fmt.Println(s.Bytes())
+
+	// Parsing is case-insensitive; kB/MB are base-10, KiB/MiB base-2.
+	kb, _ := size.Parse("1kb")
+	kib, _ := size.Parse("1KiB")
+	fmt.Println(kb.Bytes(), kib.Bytes())
+
+	// Output:
+	// 5242880
+	// 1000 1024
+}
+
 func ExampleSize_MarshalText() {
 	s := 5 * size.MiB
 

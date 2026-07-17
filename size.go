@@ -10,8 +10,10 @@
 // (2^64 bytes) cannot be represented; Zebibyte and larger units are
 // therefore intentionally omitted.
 //
-// Use Bytes for the raw byte count, String/Format/FormatIEC/FormatSI to render
-// a size as text, and MarshalText/UnmarshalText for text (un)marshaling.
+// Use Bytes for the raw byte count or the per-unit float accessors (Gibibytes,
+// Megabytes, ...) for a scaled value, String/Format/FormatIEC/FormatSI to render
+// a size as text, Parse to read one back, and MarshalText/UnmarshalText for text
+// (un)marshaling.
 //
 // Basic usage:
 //
@@ -49,8 +51,8 @@ const (
 	// Exbibytes are only supported til 2^64
 	EiB = Exbibyte
 
-	// zebibyte and higher is not supported,
-	// zebibite is 2^70 and larger as uint64 2^64
+	// Zebibyte and higher are not supported: a Zebibyte is 2^70, which
+	// exceeds the 2^64 range of the underlying uint64.
 )
 
 // Base-10 (SI) units of size. Sizes are by a magnitude of 1000 apart.
@@ -71,7 +73,8 @@ const (
 	// Exabyte is limited by uint64
 	EB = Exabyte
 
-	// zebibyte and above are not supported limited by uint64
+	// Zettabyte and above are not supported: they exceed the 2^64 range of
+	// the underlying uint64.
 )
 
 type unit struct {
@@ -113,7 +116,6 @@ const (
 	UnitTB
 	UnitPB
 	UnitEB
-	unitMax
 )
 
 var (
@@ -180,6 +182,46 @@ func (s Size) Bytes() uint64 {
 	return uint64(s)
 }
 
+// The following accessors return the size scaled to a unit as a float64,
+// analogous to time.Duration's Hours and Minutes. They may lose precision for
+// very large values; use Bytes for the exact count.
+
+// Kibibytes returns the size in base-2 kibibytes (1024 bytes).
+func (s Size) Kibibytes() float64 { return float64(s) / float64(Kibibyte) }
+
+// Mebibytes returns the size in base-2 mebibytes (1024 kibibytes).
+func (s Size) Mebibytes() float64 { return float64(s) / float64(Mebibyte) }
+
+// Gibibytes returns the size in base-2 gibibytes (1024 mebibytes).
+func (s Size) Gibibytes() float64 { return float64(s) / float64(Gibibyte) }
+
+// Tebibytes returns the size in base-2 tebibytes (1024 gibibytes).
+func (s Size) Tebibytes() float64 { return float64(s) / float64(Tebibyte) }
+
+// Pebibytes returns the size in base-2 pebibytes (1024 tebibytes).
+func (s Size) Pebibytes() float64 { return float64(s) / float64(Pebibyte) }
+
+// Exbibytes returns the size in base-2 exbibytes (1024 pebibytes).
+func (s Size) Exbibytes() float64 { return float64(s) / float64(Exbibyte) }
+
+// Kilobytes returns the size in base-10 kilobytes (1000 bytes).
+func (s Size) Kilobytes() float64 { return float64(s) / float64(Kilobyte) }
+
+// Megabytes returns the size in base-10 megabytes (1000 kilobytes).
+func (s Size) Megabytes() float64 { return float64(s) / float64(Megabyte) }
+
+// Gigabytes returns the size in base-10 gigabytes (1000 megabytes).
+func (s Size) Gigabytes() float64 { return float64(s) / float64(Gigabyte) }
+
+// Terabytes returns the size in base-10 terabytes (1000 gigabytes).
+func (s Size) Terabytes() float64 { return float64(s) / float64(Terabyte) }
+
+// Petabytes returns the size in base-10 petabytes (1000 terabytes).
+func (s Size) Petabytes() float64 { return float64(s) / float64(Petabyte) }
+
+// Exabytes returns the size in base-10 exabytes (1000 petabytes).
+func (s Size) Exabytes() float64 { return float64(s) / float64(Exabyte) }
+
 // String returns a formatted size string with unit suffix using opinionated
 // format options:
 //
@@ -192,7 +234,7 @@ func (s Size) String() string {
 	// format with opinionated settings:
 	// - IEC (2-based)
 	// - cut empty fraction
-	// - prevision: two decimals (max)
+	// - precision: two decimals (max)
 	return s.format(s.fit(unitsIEC), WithCutEmptyFraction(), WithPrecision(2))
 }
 
@@ -279,39 +321,51 @@ func (s Size) MarshalText() ([]byte, error) {
 	return []byte(strconv.FormatUint(uint64(s), 10) + "B"), nil
 }
 
-// UnmarshalText implements encoding.TextUnmarshaler, parsing values such as
-// "5242880B", "5MiB", "5 MB", or "0.04TiB".
-func (s *Size) UnmarshalText(text []byte) error {
-	raw := strings.TrimSpace(string(text))
+// Parse parses a size string such as "5242880B", "5MiB", "5 MB", "5kb", or
+// "0.04TiB" into a Size. Parsing is case-insensitive ("5gb" and "5GB" are
+// equivalent), tolerates surrounding whitespace, and accepts fractional values.
+// Note that the base-10 suffixes (kB, MB, ...) scale by 1000 while the base-2
+// suffixes (KiB, MiB, ...) scale by 1024. Parse is the inverse of the Format
+// methods and underlies UnmarshalText.
+func Parse(text string) (Size, error) {
+	raw := strings.ToLower(strings.TrimSpace(text))
 
 	// longest suffix matching so MB wins over B
 	var match unit
 	found := false
 	for _, u := range units {
-		if strings.HasSuffix(raw, u.suffix) && (!found || len(u.suffix) > len(match.suffix)) {
+		if strings.HasSuffix(raw, strings.ToLower(u.suffix)) && (!found || len(u.suffix) > len(match.suffix)) {
 			match = u
 			found = true
 		}
 	}
 
 	if !found {
-		return ErrUnknownUnit
+		return 0, ErrUnknownUnit
 	}
 
-	num := strings.TrimSpace(strings.TrimSuffix(raw, match.suffix))
+	num := strings.TrimSpace(strings.TrimSuffix(raw, strings.ToLower(match.suffix)))
 
 	// assume bytes first to avoid losing precision due to float64
 	if v, err := strconv.ParseUint(num, 10, 64); err == nil {
-		*s = Size(v) * match.base
-		return nil
+		return Size(v) * match.base, nil
 	}
 
 	val, err := strconv.ParseFloat(num, 64)
 	if err != nil {
-		return fmt.Errorf("parsing size value failed: %w", err)
+		return 0, fmt.Errorf("parsing size value failed: %w", err)
 	}
 
-	*s = Size(val * float64(match.base))
+	return Size(val * float64(match.base)), nil
+}
 
+// UnmarshalText implements encoding.TextUnmarshaler, parsing values such as
+// "5242880B", "5MiB", "5 MB", or "0.04TiB". See Parse for the accepted syntax.
+func (s *Size) UnmarshalText(text []byte) error {
+	v, err := Parse(string(text))
+	if err != nil {
+		return err
+	}
+	*s = v
 	return nil
 }

@@ -86,6 +86,62 @@ func TestSize_TextRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParse(t *testing.T) {
+	frac := 0.04
+	for _, testCase := range []struct {
+		name     string
+		input    string
+		expected size.Size
+		wantErr  bool
+	}{
+		{name: "bytes", input: "5B", expected: 5 * size.B},
+		{name: "MB suffix", input: "5MB", expected: 5 * size.MB},
+		{name: "kB suffix", input: "5kB", expected: 5 * size.KB},
+		{name: "KiB suffix", input: "5KiB", expected: 5 * size.KiB},
+		{name: "MiB suffix", input: "5MiB", expected: 5 * size.MiB},
+		{name: "uppercase KB is kilobyte", input: "5KB", expected: 5 * size.KB},
+		{name: "lowercase gb", input: "5gb", expected: 5 * size.GB},
+		{name: "uppercase mib", input: "5MIB", expected: 5 * size.MiB},
+		{name: "lowercase byte", input: "5b", expected: 5 * size.B},
+		{name: "leading and trailing space", input: "  5 MiB  ", expected: 5 * size.MiB},
+		{name: "fractional", input: "0.04TiB", expected: size.Size(frac * float64(size.TiB))},
+		{name: "missing suffix", input: "5", wantErr: true},
+		{name: "non-numeric value", input: "abcMiB", wantErr: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Repeat to catch any residual map-iteration nondeterminism.
+			for range 50 {
+				got, err := size.Parse(testCase.input)
+				if testCase.wantErr {
+					require.Error(t, err)
+					continue
+				}
+				require.NoError(t, err)
+				require.Equal(t, testCase.expected, got)
+			}
+		})
+	}
+}
+
+func TestSize_UnitAccessors(t *testing.T) {
+	require.Equal(t, float64(1), (1 * size.Kibibyte).Kibibytes())
+	require.Equal(t, float64(1), (1 * size.Mebibyte).Mebibytes())
+	require.Equal(t, float64(1), (1 * size.Gibibyte).Gibibytes())
+	require.Equal(t, float64(1), (1 * size.Tebibyte).Tebibytes())
+	require.Equal(t, float64(1), (1 * size.Pebibyte).Pebibytes())
+	require.Equal(t, float64(1), (1 * size.Exbibyte).Exbibytes())
+
+	require.Equal(t, float64(1), (1 * size.Kilobyte).Kilobytes())
+	require.Equal(t, float64(1), (1 * size.Megabyte).Megabytes())
+	require.Equal(t, float64(1), (1 * size.Gigabyte).Gigabytes())
+	require.Equal(t, float64(1), (1 * size.Terabyte).Terabytes())
+	require.Equal(t, float64(1), (1 * size.Petabyte).Petabytes())
+	require.Equal(t, float64(1), (1 * size.Exabyte).Exabytes())
+
+	require.Equal(t, 0.5, (512 * size.Kibibyte).Mebibytes())
+	require.Equal(t, float64(1024), size.Mebibyte.Kibibytes())
+}
+
 func TestSize_UnmarshalText(t *testing.T) {
 	// Non-constant so the fractional float can be converted to Size, matching
 	// exactly what UnmarshalText computes internally.
