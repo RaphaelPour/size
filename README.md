@@ -34,7 +34,14 @@ arcticArchiveMaxSize := 5 * size.EiB
 | `Pebibyte` / `PiB` | `Petabyte` / `PB` |
 | `Exbibyte` / `EiB` | `Exabyte` / `EB` |
 
-The underlying type is `uint64`, so the largest representable unit is the Exbibyte (2^60). Zebibyte and above are intentionally omitted.
+The underlying type is `uint64`, so the largest representable unit is the Exbibyte (2^60 bytes). Zebibyte and above are intentionally omitted. Arithmetic is plain `uint64` arithmetic: there are no negative sizes, and overflow wraps rather than saturating.
+
+Read a size back out with `Bytes()` for the exact count, or with the per-unit `float64` accessors (`Kibibytes()`, `Megabytes()`, `Gibibytes()`, …) for a scaled value:
+
+```go
+(6 * size.GiB).Gibibytes() // 6
+(1500 * size.KB).Megabytes() // 1.5
+```
 
 ## Formatting
 
@@ -73,7 +80,13 @@ var s size.Size
 _ = s.UnmarshalText([]byte("5MiB"))     // s.Bytes() == 5242880
 ```
 
-`UnmarshalText` accepts any unit suffix (`"5MiB"`, `"5MB"`, `"5kB"`, `"5242880B"`), tolerates surrounding whitespace, and supports fractional values (`"0.04TiB"`).
+To parse a string directly, use `Parse` (the `time.ParseDuration` analog); `UnmarshalText` is built on it:
+
+```go
+s, _ := size.Parse("5MiB") // s.Bytes() == 5242880
+```
+
+Parsing accepts any unit suffix (`"5MiB"`, `"5MB"`, `"5kB"`, `"5242880B"`), tolerates surrounding whitespace, and supports fractional values (`"0.04TiB"`). It is **case-insensitive** (`"5gb"` == `"5GB"`), and the base follows the suffix: `KB`/`kB` are base-10 (1000) while `KiB` is base-2 (1024), so `"1KB"` parses to 1000 bytes, not 1024.
 
 ## Alternatives
 
