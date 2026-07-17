@@ -67,10 +67,12 @@ func ExampleParse() {
 	s, _ := size.Parse("5MiB")
 	fmt.Println(s.Bytes())
 
-	// Parsing is case-insensitive; kB/MB are base-10, KiB/MiB base-2.
-	kb, _ := size.Parse("1kb")
-	kib, _ := size.Parse("1KiB")
-	fmt.Println(kb.Bytes(), kib.Bytes())
+	// The case of the "k" selects the base: lowercase "kB" is the SI kilobyte
+	// (1000), uppercase "KB" is the JEDEC kilobyte (1024). Other units carry an
+	// "i" to mark base-2, so they parse regardless of case.
+	kb, _ := size.Parse("1kB")
+	KB, _ := size.Parse("1KB")
+	fmt.Println(kb.Bytes(), KB.Bytes())
 
 	// Output:
 	// 5242880

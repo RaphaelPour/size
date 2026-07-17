@@ -67,6 +67,7 @@ Options tune precision and trailing zeros:
 ```go
 s.FormatSI(size.WithPrecision(4))          // "45.0972GB"
 (10 * size.MiB).FormatIEC(size.WithCutEmptyFraction()) // "10MiB"
+(5 * size.MiB).FormatIEC(size.WithSpace())             // "5.00 MiB"
 ```
 
 ## Text marshaling
@@ -86,7 +87,14 @@ To parse a string directly, use `Parse` (the `time.ParseDuration` analog); `Unma
 s, _ := size.Parse("5MiB") // s.Bytes() == 5242880
 ```
 
-Parsing accepts any unit suffix (`"5MiB"`, `"5MB"`, `"5kB"`, `"5242880B"`), tolerates surrounding whitespace, and supports fractional values (`"0.04TiB"`). It is **case-insensitive** (`"5gb"` == `"5GB"`), and the base follows the suffix: `KB`/`kB` are base-10 (1000) while `KiB` is base-2 (1024), so `"1KB"` parses to 1000 bytes, not 1024.
+Parsing accepts any unit suffix (`"5MiB"`, `"5MB"`, `"5kB"`, `"5242880B"`), tolerates surrounding whitespace, and supports fractional values (`"0.04TiB"`). Negative, infinite, and NaN values are rejected, since a size is a non-negative byte count. It is **case-insensitive**, with one deliberate exception: the case of the `k` in the kilo suffix selects the base, following common convention.
+
+```go
+size.Parse("1kB") // 1000  — lowercase k: SI kilobyte
+size.Parse("1KB") // 1024  — uppercase K: JEDEC kilobyte
+size.Parse("1KiB") // 1024 — IEC kibibyte
+size.Parse("5gb") // == "5GB": larger units carry an "i" for base-2, so case is irrelevant
+```
 
 ## Alternatives
 

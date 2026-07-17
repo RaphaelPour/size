@@ -24,6 +24,7 @@ package size
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -261,7 +262,10 @@ func (s Size) format(u unit, opts ...FormatOption) string {
 		str = strings.TrimRight(str, "0")
 		str = strings.TrimRight(str, ".")
 	}
-	// append size suffix
+	// append size suffix, optionally separated by a space
+	if options.space {
+		return str + " " + u.suffix
+	}
 	return str + u.suffix
 }
 
@@ -275,6 +279,7 @@ var (
 type formatOptions struct {
 	cutEmptyFraction bool
 	precision        int
+	space            bool
 }
 
 // FormatOption configures how a Size is rendered as text. See
@@ -289,11 +294,21 @@ func WithCutEmptyFraction() FormatOption {
 	}
 }
 
-// WithPrecision sets the maximum number of decimal places in the formatted
-// value. The default is 2.
+// WithPrecision sets the number of decimal places in the formatted value. The
+// default is 2. Combine it with WithCutEmptyFraction to treat this as an upper
+// bound rather than an exact width. A negative precision selects the smallest
+// number of digits that represents the value exactly.
 func WithPrecision(precision int) FormatOption {
 	return func(fOpt *formatOptions) {
 		fOpt.precision = precision
+	}
+}
+
+// WithSpace inserts a single space between the value and its unit suffix (for
+// example "5 MiB" instead of "5MiB"). Parse accepts both forms.
+func WithSpace() FormatOption {
+	return func(fOpt *formatOptions) {
+		fOpt.space = true
 	}
 }
 
@@ -321,14 +336,23 @@ func (s Size) MarshalText() ([]byte, error) {
 	return []byte(strconv.FormatUint(uint64(s), 10) + "B"), nil
 }
 
-// Parse parses a size string such as "5242880B", "5MiB", "5 MB", "5kb", or
-// "0.04TiB" into a Size. Parsing is case-insensitive ("5gb" and "5GB" are
-// equivalent), tolerates surrounding whitespace, and accepts fractional values.
-// Note that the base-10 suffixes (kB, MB, ...) scale by 1000 while the base-2
-// suffixes (KiB, MiB, ...) scale by 1024. Parse is the inverse of the Format
-// methods and underlies UnmarshalText.
+// Parse parses a size string such as "5242880B", "5MiB", "5 MB", "5kB", or
+// "0.04TiB" into a Size. It tolerates surrounding whitespace and accepts
+// fractional values. Negative, infinite, and NaN values are rejected because a
+// Size is a non-negative byte count.
+//
+// Parsing is case-insensitive except for the ambiguous kilo suffix, where the
+// case of the "k" selects the base, following common convention:
+//
+//   - "kB" (lowercase k) is the SI kilobyte and scales by 1000
+//   - "KB" (uppercase K) is the JEDEC kilobyte and scales by 1024
+//
+// Every other unit is unambiguous because its base-2 form carries an "i"
+// ("MiB" vs "MB"), so "gb"/"GB" and "mib"/"MiB" each parse regardless of case.
+// Parse is the inverse of the Format methods and underlies UnmarshalText.
 func Parse(text string) (Size, error) {
-	raw := strings.ToLower(strings.TrimSpace(text))
+	trimmed := strings.TrimSpace(text)
+	raw := strings.ToLower(trimmed)
 
 	// longest suffix matching so MB wins over B
 	var match unit
@@ -344,11 +368,22 @@ func Parse(text string) (Size, error) {
 		return 0, ErrUnknownUnit
 	}
 
+	base := match.base
+
+	// Disambiguate the kilo suffix by the case of its "k": lowercase "kB" is
+	// the SI kilobyte (1000), uppercase "KB" is the JEDEC kilobyte (1024). All
+	// larger units carry an "i" in their base-2 form, so they never collide.
+	if match == unitKB {
+		if k := len(trimmed) - len(match.suffix); k >= 0 && trimmed[k] == 'K' {
+			base = Kibibyte
+		}
+	}
+
 	num := strings.TrimSpace(strings.TrimSuffix(raw, strings.ToLower(match.suffix)))
 
 	// assume bytes first to avoid losing precision due to float64
 	if v, err := strconv.ParseUint(num, 10, 64); err == nil {
-		return Size(v) * match.base, nil
+		return Size(v) * base, nil
 	}
 
 	val, err := strconv.ParseFloat(num, 64)
@@ -356,7 +391,13 @@ func Parse(text string) (Size, error) {
 		return 0, fmt.Errorf("parsing size value failed: %w", err)
 	}
 
-	return Size(val * float64(match.base)), nil
+	// Sizes are non-negative and finite; reject values that would otherwise
+	// wrap or convert to an implementation-defined uint64.
+	if val < 0 || math.IsInf(val, 0) || math.IsNaN(val) {
+		return 0, fmt.Errorf("invalid size value %q", num)
+	}
+
+	return Size(val * float64(base)), nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler, parsing values such as
