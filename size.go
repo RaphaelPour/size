@@ -3,12 +3,15 @@
 //
 // Size supports both base-2 (IEC) units such as Kibibyte, Mebibyte, and
 // Gibibyte, and base-10 (SI) units such as Kilobyte, Megabyte, and
-// Gigabyte. Short aliases like Kib, Mib, Gib and Kb, Mb, Gb are also
+// Gigabyte. Short aliases like KiB, MiB, GiB and KB, MB, GB are also
 // provided for convenience.
 //
 // Because the underlying type is uint64, values above roughly 16 Exbibytes
 // (2^64 bytes) cannot be represented; Zebibyte and larger units are
 // therefore intentionally omitted.
+//
+// Use Bytes for the raw byte count, String/Format/FormatIEC/FormatSI to render
+// a size as text, and MarshalText/UnmarshalText for text (un)marshaling.
 //
 // Basic usage:
 //
@@ -76,8 +79,11 @@ type unit struct {
 	suffix string
 }
 
+// Unit selects an explicit unit for Size.Format. Valid values are the Unit*
+// constants; an unrecognized Unit falls back to bytes.
 type Unit uint8
 
+// String returns the unit's suffix, for example "MiB" or "kB".
 func (u Unit) String() string {
 	return u.internalUnit().suffix
 }
@@ -90,6 +96,8 @@ func (u Unit) internalUnit() unit {
 	return unt
 }
 
+// Unit constants for use with Size.Format, covering the base-2 (IEC) and
+// base-10 (SI) units.
 const (
 	UnitByte Unit = iota
 	UnitKiB
@@ -163,19 +171,22 @@ var (
 	}
 )
 
-var (
-	ErrUnknownUnit = errors.New("unknown unit")
-)
+// ErrUnknownUnit is returned by UnmarshalText when the input has no recognized
+// unit suffix.
+var ErrUnknownUnit = errors.New("unknown unit")
 
 // Bytes returns the byte size as uint64.
 func (s Size) Bytes() uint64 {
 	return uint64(s)
 }
 
-// String returns a formated size string with unit suffix using opinionated format options:
-// - IEC (2-based)
-// - cut empty fractions (42.00 -> 42, 12.30 -> 12.3, 3.14 -> 3.14)
-// - prevision: two decimals (max)
+// String returns a formatted size string with unit suffix using opinionated
+// format options:
+//
+//   - IEC (2-based)
+//   - cut empty fractions (42.00 -> 42, 12.30 -> 12.3, 3.14 -> 3.14)
+//   - precision: two decimals (max)
+//
 // Use Format, FormatIEC and FormatSI for full customization.
 func (s Size) String() string {
 	// format with opinionated settings:
@@ -224,35 +235,46 @@ type formatOptions struct {
 	precision        int
 }
 
+// FormatOption configures how a Size is rendered as text. See
+// WithCutEmptyFraction and WithPrecision.
 type FormatOption func(fOpt *formatOptions)
 
+// WithCutEmptyFraction trims trailing zeros and a trailing decimal point from
+// the formatted value (for example 42.00 -> 42 and 12.30 -> 12.3).
 func WithCutEmptyFraction() FormatOption {
 	return func(fOpt *formatOptions) {
 		fOpt.cutEmptyFraction = true
 	}
 }
 
+// WithPrecision sets the maximum number of decimal places in the formatted
+// value. The default is 2.
 func WithPrecision(precision int) FormatOption {
 	return func(fOpt *formatOptions) {
 		fOpt.precision = precision
 	}
 }
 
+// Format renders the size in the given Unit, applying any FormatOption.
 func (s Size) Format(u Unit, opts ...FormatOption) string {
 	return s.format(u.internalUnit(), opts...)
 }
 
+// FormatIEC renders the size using the largest base-2 (IEC) unit that keeps the
+// value at or above 1, applying any FormatOption.
 func (s Size) FormatIEC(opts ...FormatOption) string {
 	return s.format(s.fit(unitsIEC), opts...)
 }
 
+// FormatSI renders the size using the largest base-10 (SI) unit that keeps the
+// value at or above 1, applying any FormatOption.
 func (s Size) FormatSI(opts ...FormatOption) string {
 	return s.format(s.fit(unitsSI), opts...)
 }
 
 // MarshalText implements encoding.TextMarshaler. It emits the exact byte count
-// with a "B" suffix (for example "5242880B"). Losless encoding and reversible
-// via UnmarshalText
+// with a "B" suffix (for example "5242880B"). The encoding is lossless and is
+// reversible via UnmarshalText.
 func (s Size) MarshalText() ([]byte, error) {
 	return []byte(strconv.FormatUint(uint64(s), 10) + "B"), nil
 }
