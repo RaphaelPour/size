@@ -1,5 +1,5 @@
 // Package size provides a Size type for representing data sizes in bytes,
-// analogous to how the standard library's time.Duration represents durations.
+// analogous to how the standard library's [time.Duration] represents durations.
 //
 // Size supports both base-2 (IEC) units such as Kibibyte, Mebibyte, and
 // Gibibyte, and base-10 (SI) units such as Kilobyte, Megabyte, and
@@ -15,10 +15,10 @@
 // a size as text, Parse to read one back, and MarshalText/UnmarshalText for text
 // (un)marshaling.
 //
-// Size also implements flag.Value (via Set) for use as a command-line flag and
-// slog.LogValuer (via LogValue) for structured logging. Because it implements
-// encoding.TextMarshaler and encoding.TextUnmarshaler, it round-trips through
-// encoding/json and other text-based codecs (as the string form, e.g.
+// Size also implements [flag.Value] (via Set) for use as a command-line flag and
+// [slog.LogValuer] (via LogValue) for structured logging. Because it implements
+// [encoding.TextMarshaler] and [encoding.TextUnmarshaler], it round-trips through
+// [encoding/json] and other text-based codecs (as the string form, e.g.
 // "5242880B") with no additional code.
 //
 // Basic usage:
@@ -193,8 +193,8 @@ func (s Size) Bytes() uint64 {
 }
 
 // The following accessors return the size scaled to a unit as a float64,
-// analogous to time.Duration's Hours and Minutes. They may lose precision for
-// very large values; use Bytes for the exact count.
+// analogous to [time.Duration.Hours] and [time.Duration.Minutes]. They may lose
+// precision for very large values; use Bytes for the exact count.
 
 // Kibibytes returns the size in base-2 kibibytes (1024 bytes).
 func (s Size) Kibibytes() float64 { return float64(s) / float64(Kibibyte) }
@@ -338,7 +338,7 @@ func (s Size) FormatSI(opts ...FormatOption) string {
 	return s.format(s.fit(unitsSI), opts...)
 }
 
-// MarshalText implements encoding.TextMarshaler. It emits the exact byte count
+// MarshalText implements [encoding.TextMarshaler]. It emits the exact byte count
 // with a "B" suffix (for example "5242880B"). The encoding is lossless and is
 // reversible via UnmarshalText.
 func (s Size) MarshalText() ([]byte, error) {
@@ -410,7 +410,7 @@ func Parse(text string) (Size, error) {
 	return Size(val * float64(base)), nil
 }
 
-// UnmarshalText implements encoding.TextUnmarshaler, parsing values such as
+// UnmarshalText implements [encoding.TextUnmarshaler], parsing values such as
 // "5242880B", "5MiB", "5 MB", or "0.04TiB". See Parse for the accepted syntax.
 func (s *Size) UnmarshalText(text []byte) error {
 	v, err := Parse(string(text))
@@ -421,7 +421,7 @@ func (s *Size) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// Set implements flag.Value, parsing a size string such as "5MiB" so a Size can
+// Set implements [flag.Value], parsing a size string such as "5MiB" so a Size can
 // be used directly as a command-line flag. See Parse for the accepted syntax.
 func (s *Size) Set(text string) error {
 	v, err := Parse(text)
@@ -432,7 +432,7 @@ func (s *Size) Set(text string) error {
 	return nil
 }
 
-// LogValue implements slog.LogValuer, rendering the size via String so it
+// LogValue implements [slog.LogValuer], rendering the size via String so it
 // appears as a human-readable string (for example "42GiB") in structured logs.
 func (s Size) LogValue() slog.Value {
 	return slog.StringValue(s.String())
